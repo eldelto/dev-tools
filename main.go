@@ -7,34 +7,13 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"sync"
 )
 
 type SubShell struct {
-	dir    string
-	input  chan string
-	output chan<- string
+	dir string
 }
 
-func shellWorker(s *SubShell) {
-	for rawCmd := range s.input {
-		cmdOut := bytes.Buffer{}
-
-		cmd := exec.Command(rawCmd)
-		cmd.Dir = s.dir
-		cmd.Stdout = os.Stdout
-		cmd.Stdin = os.Stdin
-
-		if err := cmd.Run(); err != nil {
-			s.output <- err.Error()
-			continue
-		}
-
-		s.output <- cmdOut.String()
-	}
-}
-
-func NewSubShell(path string, output chan<- string) (*SubShell, error) {
+func NewSubShell(path string) (*SubShell, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to open file while creating a sub shell: %w", err)
@@ -51,62 +30,90 @@ func NewSubShell(path string, output chan<- string) (*SubShell, error) {
 	}
 
 	shell := SubShell{
-		dir:    path,
-		input:  make(chan string, 1),
-		output: output,
+		dir: path,
 	}
-
-	go shellWorker(&shell)
 
 	return &shell, nil
 }
 
-func (s *SubShell) QueueCmd(cmd string) {
-	s.input <- cmd
-}
+func (s *SubShell) Run(command string) (string, error) {
+	buffer := bytes.Buffer{}
 
-func (s *SubShell) Close() {
-	close(s.input)
-}
+	cmd := exec.Command("fish", "-c", command)
+	cmd.Dir = s.dir
+	cmd.Stdout = &buffer
 
-func mainOutputWorker(output <-chan string, waitGroup *sync.WaitGroup) {
-	for msg := range output {
-		fmt.Println(msg)
-		waitGroup.Done()
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("Error for sub shell '%s': %w", s.dir, err)
 	}
+
+	return buffer.String(), nil
 }
+
+type ShellResult struct {
+	Dir    string
+	Result string
+}
+
+type SubShells struct {
+	subShells []*SubShell
+}
+
+func NewSubShells() *SubShells {
+	return &SubShells{[]*SubShell{}}
+}
+
+func (s *SubShells) Append(subShell *SubShell) {
+	s.subShells = append(s.subShells, subShell)
+}
+
+func (s *SubShells) Broadcast(command string) ([]ShellResult, error) {
+	results := []ShellResult{}
+
+	for _, subShell := range s.subShells {
+		result, err := subShell.Run(command)
+		if err != nil {
+			return nil, err
+		}
+
+		results = append(results, ShellResult{subShell.dir, result})
+	}
+
+	return results, nil
+}
+
+const (
+	blue  = "\033[32m"
+	reset = "\033[0m"
+)
 
 func main() {
-	mainOut := make(chan string)
-	defer close(mainOut)
-
 	dirs := os.Args[1:]
-	subShells := []*SubShell{}
+	subShells := NewSubShells()
 	for _, dir := range dirs {
-		subShell, err := NewSubShell(dir, mainOut)
+		subShell, err := NewSubShell(dir)
 		if err != nil {
 			panic(err)
 		}
-		subShells = append(subShells, subShell)
+		subShells.Append(subShell)
 	}
-
-	waitGroup := sync.WaitGroup{}
-	go mainOutputWorker(mainOut, &waitGroup)
 
 	for {
 		fmt.Print(">")
 		reader := bufio.NewReader(os.Stdin)
-		userInput, err := reader.ReadString('\n')
+		command, err := reader.ReadString('\n')
 		if err != nil {
-			panic("failed to read user input")
+			panic(fmt.Errorf("failed to read user input: %w", err))
 		}
-		userInput = strings.Trim(userInput, "\r\n")
+		command = strings.Trim(command, "\r\n")
 
-		for _, subShell := range subShells {
-			waitGroup.Add(1)
-			subShell.QueueCmd(userInput)
+		results, err := subShells.Broadcast(command)
+		if err != nil {
+			panic(err)
 		}
 
-		waitGroup.Wait()
+		for _, result := range results {
+			fmt.Printf("%s%s%s:\n%s\n", blue, result.Dir, reset, result.Result)
+		}
 	}
 }
