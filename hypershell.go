@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"sort"
+	"sync"
 )
 
 type SubShell struct {
@@ -70,11 +72,26 @@ func (s *HyperShell) Append(subShell *SubShell) {
 
 func (s *HyperShell) Run(command string) []ShellResult {
 	results := []ShellResult{}
+	resultChan := make(chan ShellResult, len(s.subShells))
+	wg := sync.WaitGroup{}
 
 	for _, subShell := range s.subShells {
-		result := subShell.Run(command)
+		wg.Add(1)
+		go func(s *SubShell) {
+			resultChan <- s.Run(command)
+			wg.Done()
+		}(subShell)
+	}
+	wg.Wait()
+	close(resultChan)
+
+	for result := range resultChan {
 		results = append(results, result)
 	}
+
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].Dir < results[j].Dir
+	})
 
 	return results
 }
