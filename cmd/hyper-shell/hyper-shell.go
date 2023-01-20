@@ -10,7 +10,8 @@ import (
 )
 
 const (
-	blue  = "\033[32m"
+	green = "\033[32m"
+	red   = "\033[31m"
 	reset = "\033[0m"
 )
 
@@ -36,7 +37,12 @@ func main() {
 
 		results := hyperShell.Run(command)
 		for _, result := range results {
-			fmt.Printf("%s%s%s:\n%s\n", blue, result.Dir, reset, result.Result)
+			fmt.Printf("%s%s%s:\n%s", green, result.Dir, reset, result.Result)
+
+			if result.Error != nil {
+				fmt.Printf("%s%s%s\n", red, result.Error.Error(), reset)
+			}
+			fmt.Println()
 		}
 	}
 }

@@ -9,6 +9,12 @@ import (
 	"sync"
 )
 
+var currentShell string
+
+func init() {
+	currentShell = os.Getenv("SHELL")
+}
+
 type SubShell struct {
 	dir string
 }
@@ -39,16 +45,15 @@ func NewSubShell(path string) (*SubShell, error) {
 func (s *SubShell) Run(command string) ShellResult {
 	buffer := bytes.Buffer{}
 
-	cmd := exec.Command("fish", "-c", command)
+	cmd := exec.Command(currentShell, "-c", command)
 	cmd.Dir = s.dir
 	cmd.Stdout = &buffer
+	cmd.Stderr = &buffer
 
 	result := ShellResult{Dir: s.dir}
-	if err := cmd.Run(); err != nil {
-		result.Error = fmt.Errorf("Error for sub shell '%s': %w", s.dir, err)
-	}
-
+	result.Error = cmd.Run()
 	result.Result = buffer.String()
+
 	return result
 }
 
