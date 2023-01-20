@@ -1,3 +1,3 @@
-module github.com/eldelto/dev-tools
+module github.com/eldelto/devtools
 
 go 1.19

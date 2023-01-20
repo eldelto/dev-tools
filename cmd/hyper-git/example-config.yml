@@ -1,0 +1,8 @@
+workspace: /path/to/documents
+repositories:
+  - remote: git@github.com:eldelto/devtools.git
+    directory: workspace
+    mainBranch: main
+  - remote: git@github.com:eldelto/work-stuff.git
+    directory: work
+    mainBranch: master
