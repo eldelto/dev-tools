@@ -26,8 +26,8 @@ void parse_directories(char directories[][PATH_MAX], const int argc, const char*
   const unsigned int path_count = argc - 1;
 
   for (unsigned int i = 0; i < path_count; ++i) {
-    const char* const path = argv[i+1];
-    
+    const char* const path = argv[i + 1];
+
     struct stat path_stat;
     lstat(path, &path_stat);
     if (!S_ISDIR(path_stat.st_mode)) {
@@ -42,7 +42,12 @@ void parse_directories(char directories[][PATH_MAX], const int argc, const char*
   }
 }
 
-void execute_command(const char directories[][PATH_MAX], const unsigned int dir_len, const char* const shell, const char* const command) {
+void execute_command(
+  const char directories[][PATH_MAX],
+  const unsigned int dir_len,
+  const char* const shell,
+  const char* const command
+) {
   char full_command[MAX_FULL_CMD_LEN] = "";
   char command_output[MAX_CMD_OUTPUT_LEN] = "";
 
@@ -55,12 +60,12 @@ void execute_command(const char directories[][PATH_MAX], const unsigned int dir_
     if (fd == NULL)
       handle_error("Failed to execute popen command - exiting.");
 
-    while(fgets(command_output, MAX_CMD_OUTPUT_LEN, fd) != NULL) {
+    while (fgets(command_output, MAX_CMD_OUTPUT_LEN, fd) != NULL) {
       printf("%s", command_output);
     }
 
     const int exit_status = pclose(fd);
-    if (exit_status != 0)  
+    if (exit_status != 0)
       printf("\033[31mExit status: %d\033[0m\n", exit_status);
   }
 }
