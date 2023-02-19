@@ -1,8 +1,10 @@
 #include <stdio.h>
 #include <string.h>
+#include <limits.h>
+#include <unistd.h>
 
-#include <sys/syslimits.h>
-
+#include "util.h"
+#include "hyper-shell.h"
 #include "deps/inih/ini.h"
 
 #define MAX_REMOTE_LEN 100
@@ -59,15 +61,71 @@ static int callback(
   return 1;
 }
 
-int main(int argc, char* argv[]) {
-  int error;
+typedef int(*repo_callback)(const struct repository* const);
 
-  if (argc <= 1) {
-    printf("Usage: ini_dump filename.ini\n");
-    return 1;
+static int for_each_repo(
+  const struct repository repos[],
+  const unsigned int repos_len,
+  repo_callback callback
+) {
+  int err = 0;
+  for (unsigned int i = 0; i < repos_len; ++i) {
+    const struct repository repo = repos[i];
+    if (!repo.path[0] || !repo.default_branch[0] || !repo.remote[0])
+      return 0; // TODO: Abort
+
+    err = callback(&repo);
+    if (err)
+      return err;
   }
 
-  error = ini_parse(argv[1], callback, NULL);
+  return 0;
+}
+
+static int repo_create_dir(const struct repository* const repo) {
+  printf("Creating directory '%s'\n", repo->path);
+
+  char command[200];
+  snprintf(command, sizeof(command), "mkdir -p %s", repo->path);
+  return system(command);
+}
+
+static int hg_sync(const struct repository repos[], const unsigned int repos_len) {
+  int err = for_each_repo(repos, repos_len, repo_create_dir);
+  if (err)
+    return err;
+
+  // Checkout default branch and pull changes.
+  const struct command commands[repos_len];
+  char git_path[PATH_MAX];
+  for (unsigned int i = 0; i < repos_len; ++i) {
+    const struct command* cmd = &commands[i];
+    const struct repository repo = repos[i];
+
+    strlcpy((char*)cmd->directory, repo.path, PATH_MAX);
+
+    // Clone the repository if the .git folder does not exist.
+    snprintf((char*)git_path, sizeof(git_path), "%s/.git", repo.path);
+    if (access(git_path, F_OK) == 0) {
+      snprintf((char*)cmd->command, MAX_CMD_LEN,
+        "git stash && git checkout %s && git pull", repo.default_branch);
+    }
+    else {
+      snprintf((char*)cmd->command, MAX_CMD_LEN,
+        "git clone %s . && git stash && git checkout %s && git pull",
+        repo.remote, repo.default_branch);
+    }
+  }
+
+  execute_command(commands, repos_len, true);
+  return 0;
+}
+
+int main(int argc, char* argv[]) {
+  if (argc < 2)
+    panic("No path to .ini file provided - exiting.");
+
+  int error = ini_parse(argv[1], callback, NULL);
   if (error < 0) {
     printf("Can't read '%s'!\n", argv[1]);
     return 2;
@@ -77,9 +135,9 @@ int main(int argc, char* argv[]) {
     return 3;
   }
 
-  for (unsigned int i = 0; i <= repo_offset; ++i) {
-    const struct repository repo = repos[i];
-    printf("remote=%s branch=%s path=%s\n", repo.remote, repo.default_branch, repo.path);
-  }
+  int err = hg_sync(repos, repo_offset + 1);
+  if (err)
+    return err;
+
   return 0;
 }

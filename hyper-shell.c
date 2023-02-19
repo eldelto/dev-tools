@@ -2,17 +2,18 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include <sys/syslimits.h>
+#include <limits.h>
 
 #include "hyper-shell.h"
+#include "util.h"
 
 int main(const int argc, const char* const argv[]) {
   if (argc < 2)
-    handle_error("No paths provided - exiting.");
+    panic("No paths provided - exiting.");
 
   const char* const shell = getenv("SHELL");
   if (shell == NULL)
-    handle_error("Environment variable 'SHELL' is not set - exiting.");
+    panic("Environment variable 'SHELL' is not set - exiting.");
 
   const unsigned int dir_count = argc - 1;
   char directories[dir_count][PATH_MAX];
@@ -20,10 +21,12 @@ int main(const int argc, const char* const argv[]) {
 
   // Main loop
   char command[MAX_CMD_LEN + 1] = "";
+  const struct command commands[dir_count];
   while (true) {
     printf("\n> ");
-    scanf("%"stringify(MAX_CMD_LEN)"s", command);
-    execute_command(directories, dir_count, shell, command);
+    fgets(command, MAX_CMD_LEN, stdin);
+    directories_to_commands(directories, dir_count, commands, command);
+    execute_command(commands, dir_count, false);
   }
 
   return 0;
