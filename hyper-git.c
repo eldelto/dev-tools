@@ -26,7 +26,7 @@ struct repository {
 //   strlcpy((char*)repo->path, path, PATH_MAX);
 // }
 
-#define MAX_REPO_COUNT 10
+#define MAX_REPO_COUNT 20
 const struct repository repos[MAX_REPO_COUNT];
 unsigned int repo_offset = 0;
 
@@ -90,6 +90,12 @@ static int repo_create_dir(const struct repository* const repo) {
   return system(command);
 }
 
+static bool is_git_project(const char path[]) {
+  char git_path[PATH_MAX];
+  snprintf((char*)git_path, sizeof(git_path), "%s/.git", path);
+  return !access(git_path, F_OK);
+}
+
 static int hg_sync(const struct repository repos[], const unsigned int repos_len) {
   int err = for_each_repo(repos, repos_len, repo_create_dir);
   if (err)
@@ -97,7 +103,6 @@ static int hg_sync(const struct repository repos[], const unsigned int repos_len
 
   // Checkout default branch and pull changes.
   const struct command commands[repos_len];
-  char git_path[PATH_MAX];
   for (unsigned int i = 0; i < repos_len; ++i) {
     const struct command* cmd = &commands[i];
     const struct repository repo = repos[i];
@@ -105,8 +110,7 @@ static int hg_sync(const struct repository repos[], const unsigned int repos_len
     strlcpy((char*)cmd->directory, repo.path, PATH_MAX);
 
     // Clone the repository if the .git folder does not exist.
-    snprintf((char*)git_path, sizeof(git_path), "%s/.git", repo.path);
-    if (access(git_path, F_OK) == 0) {
+    if (is_git_project(repo.path)) {
       snprintf((char*)cmd->command, MAX_CMD_LEN,
         "git stash && git checkout %s && git pull", repo.default_branch);
     }
