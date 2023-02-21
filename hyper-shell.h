@@ -13,7 +13,7 @@
 
 #define MAX_CMD_LEN         200
 #define MAX_FULL_CMD_LEN    400
-#define MAX_CMD_OUTPUT_LEN  100
+#define MAX_CMD_OUTPUT_LEN  512
 
 void parse_directories(char directories[][PATH_MAX], const int argc, const char* const argv[]) {
   char error_msg[ERROR_MSG_LEN] = "";
@@ -78,7 +78,7 @@ void execute_command(
       panic("Failed to execute popen command - exiting.");
 
     while (fgets(command_output, MAX_CMD_OUTPUT_LEN, fd) != NULL) {
-      printf("%s", command_output);
+      fputs(command_output, stdout);
     }
 
     const int exit_status = pclose(fd);
