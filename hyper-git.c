@@ -26,8 +26,8 @@ struct repository {
 //   strlcpy((char*)repo->path, path, PATH_MAX);
 // }
 
-#define MAX_REPO_COUNT 10
-const struct repository repos[MAX_REPO_COUNT];
+#define MAX_REPO_COUNT 100
+struct repository* repos;
 unsigned int repo_offset = 0;
 
 static int callback(
@@ -124,6 +124,8 @@ static int hg_sync(const struct repository repos[], const unsigned int repos_len
 int main(int argc, char* argv[]) {
   if (argc < 2)
     panic("No path to .ini file provided - exiting.");
+
+  repos = malloc(sizeof(*repos) * MAX_REPO_COUNT);
 
   int error = ini_parse(argv[1], callback, NULL);
   if (error < 0) {
