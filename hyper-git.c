@@ -15,17 +15,6 @@ struct repository {
   const char path[PATH_MAX];
 };
 
-// static void repository_new(
-//   const struct repository* repo,
-//   const char* const remote,
-//   const char* const default_branch,
-//   const char* const path,
-// ) {
-//   strlcpy((char*)repo->remote, remote, MAX_REMOTE_LEN);
-//   strlcpy((char*)repo->default_branch, default_branch, MAX_BRANCH_LEN);
-//   strlcpy((char*)repo->path, path, PATH_MAX);
-// }
-
 #define MAX_REPO_COUNT 100
 struct repository* repos;
 unsigned int repo_offset = 0;
@@ -126,6 +115,13 @@ static int hg_sync(const struct repository repos[], const unsigned int repos_len
 }
 
 int main(int argc, char* argv[]) {
+  int ch = 0;
+  while ((ch = getopt(argc, argv, "c:")) != -1) {
+    printf("ch='%c' arg='%s'\n", ch, optarg);
+  }
+
+  return 0;
+
   if (argc < 2)
     panic("No path to .ini file provided - exiting.");
 
