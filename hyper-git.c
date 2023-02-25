@@ -15,17 +15,6 @@ struct repository {
   const char path[PATH_MAX];
 };
 
-// static void repository_new(
-//   const struct repository* repo,
-//   const char* const remote,
-//   const char* const default_branch,
-//   const char* const path,
-// ) {
-//   strlcpy((char*)repo->remote, remote, MAX_REMOTE_LEN);
-//   strlcpy((char*)repo->default_branch, default_branch, MAX_BRANCH_LEN);
-//   strlcpy((char*)repo->path, path, PATH_MAX);
-// }
-
 #define MAX_REPO_COUNT 100
 struct repository* repos;
 unsigned int repo_offset = 0;
@@ -42,8 +31,7 @@ static int callback(
     if (prev_section[0]) {
       ++repo_offset;
       if (repo_offset >= MAX_REPO_COUNT) {
-        // TODO: Abort with error
-        return 0;
+        panic("Your config file contains too many repositories.");
       }
     }
     strlcpy(prev_section, section, sizeof(prev_section));
@@ -72,11 +60,10 @@ static int for_each_repo(
   for (unsigned int i = 0; i < repos_len; ++i) {
     const struct repository repo = repos[i];
     if (!repo.path[0] || !repo.default_branch[0] || !repo.remote[0])
-      return 0; // TODO: Abort
+      return 1; // TODO: Abort
 
     err = callback(&repo);
-    if (err)
-      return err;
+    if (err) return err;
   }
 
   return 0;
@@ -98,8 +85,7 @@ static bool is_git_project(const char path[]) {
 
 static int hg_sync(const struct repository repos[], const unsigned int repos_len) {
   int err = for_each_repo(repos, repos_len, repo_create_dir);
-  if (err)
-    return err;
+  if (err) return err;
 
   // Checkout default branch and pull changes.
   const struct command commands[repos_len];
@@ -125,13 +111,50 @@ static int hg_sync(const struct repository repos[], const unsigned int repos_len
   return 0;
 }
 
+static void usage() {
+  puts("Usage: hyper-git [-c config-path] [command]\n");
+  puts("Commands:");
+  puts("  sync - Executes git clone, stash, checkout <default branch> & pull.");
+}
+
+static void validate_command(const char* const command) {
+  if (strcmp("sync", command) == 0)
+    return;
+
+  usage();
+  panic("Unknown command");
+}
+
 int main(int argc, char* argv[]) {
-  if (argc < 2)
-    panic("No path to .ini file provided - exiting.");
+  char* config_path = NULL;
+  int ch = 0;
+  while ((ch = getopt(argc, argv, "hc:")) != -1) {
+    switch (ch) {
+    case 'h':
+    case '?':
+      usage();
+      return 0;
+    case 'c':
+      config_path = optarg;
+    }
+  }
+
+  if (argc <= optind) {
+    usage();
+    panic("No command provided.");
+  }
+
+  char* command = argv[optind];
+  validate_command(command);
+
+  if (config_path == NULL) {
+    usage();
+    panic("No config path provided.");
+  }
 
   repos = malloc(sizeof(*repos) * MAX_REPO_COUNT);
 
-  int error = ini_parse(argv[1], callback, NULL);
+  int error = ini_parse(config_path, callback, NULL);
   if (error < 0) {
     printf("Can't read '%s'!\n", argv[1]);
     return 2;
@@ -142,8 +165,7 @@ int main(int argc, char* argv[]) {
   }
 
   int err = hg_sync(repos, repo_offset + 1);
-  if (err)
-    return err;
+  if (err) return err;
 
   return 0;
 }
