@@ -125,8 +125,15 @@ static void validate_command(const char* const command) {
   panic("Unknown command");
 }
 
+static void default_config_path(char buffer[PATH_MAX]) {
+  char* home = getenv("HOME");
+  snprintf(buffer, PATH_MAX, "%s/.dev-tools/hyper-git.ini", home);
+}
+
 int main(int argc, char* argv[]) {
-  char* config_path = NULL;
+  char config_path[PATH_MAX];
+  default_config_path(config_path);
+
   int ch = 0;
   while ((ch = getopt(argc, argv, "hc:")) != -1) {
     switch (ch) {
@@ -135,7 +142,7 @@ int main(int argc, char* argv[]) {
       usage();
       return 0;
     case 'c':
-      config_path = optarg;
+      strlcpy(config_path, optarg, PATH_MAX);
     }
   }
 
@@ -147,24 +154,24 @@ int main(int argc, char* argv[]) {
   char* command = argv[optind];
   validate_command(command);
 
-  if (config_path == NULL) {
+  if (!config_path[0]) {
     usage();
-    panic("No config path provided.");
+    panic("No config path provided or HOME environment variable is not set.");
   }
 
   repos = malloc(sizeof(*repos) * MAX_REPO_COUNT);
 
-  int error = ini_parse(config_path, callback, NULL);
-  if (error < 0) {
-    printf("Can't read '%s'!\n", argv[1]);
+  int err = ini_parse(config_path, callback, NULL);
+  if (err < 0) {
+    printf("Can't read config file '%s'.\n", config_path);
     return 2;
   }
-  else if (error) {
-    printf("Bad config file (first error on line %d)!\n", error);
+  else if (err) {
+    printf("Bad config file (first error on line %d).\n", err);
     return 3;
   }
 
-  int err = hg_sync(repos, repo_offset + 1);
+  err = hg_sync(repos, repo_offset + 1);
   if (err) return err;
 
   return 0;
