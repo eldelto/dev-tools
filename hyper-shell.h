@@ -66,10 +66,10 @@ void execute_command(
   char full_command[MAX_FULL_CMD_LEN] = "";
   char command_output[MAX_CMD_OUTPUT_LEN] = "";
 
+  // Launch processes
+  FILE* pipes[commands_len];
   for (unsigned int i = 0; i < commands_len; ++i) {
     const struct command cmd = commands[i];
-    printf("\n\033[32m%s\033[0m\n", cmd.directory);
-
     snprintf(full_command, MAX_FULL_CMD_LEN, "cd %s && %s -c \"%s\" 2>&1",
       cmd.directory, shell, cmd.command);
 
@@ -77,6 +77,15 @@ void execute_command(
     if (fd == NULL)
       panic("Failed to execute popen command - exiting.");
 
+    pipes[i] = fd;
+  }
+
+  // Serialize process output
+  for (unsigned int i = 0; i < commands_len; ++i) {
+    const struct command cmd = commands[i];
+    printf("\n\033[32m%s\033[0m\n", cmd.directory);
+
+    FILE* fd = pipes[i];
     while (fgets(command_output, MAX_CMD_OUTPUT_LEN, fd) != NULL) {
       fputs(command_output, stdout);
     }
