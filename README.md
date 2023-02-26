@@ -1,21 +1,20 @@
 
 # Table of Contents
 
-1.  [Dev Tools](#org481d202)
-    1.  [hyper-shell](#org2f82e72)
-    2.  [hyper-git](#org0b06afc)
-        1.  [sync](#orga8f6cf8)
-        2.  [Update](#orgb9864c8)
+1.  [Dev Tools](#org801d117)
+    1.  [hyper-shell](#orgcdaf129)
+    2.  [hyper-git](#orgb75ba4d)
+        1.  [sync](#org9092f7b)
 
 
-<a id="org481d202"></a>
+<a id="org801d117"></a>
 
 # Dev Tools
 
 Small convenience tools useful for dealing with work.
 
 
-<a id="org2f82e72"></a>
+<a id="orgcdaf129"></a>
 
 ## hyper-shell
 
@@ -24,7 +23,7 @@ Small convenience tools useful for dealing with work.
 Multiplexes shell commands to multiple directories.
 
 
-<a id="org0b06afc"></a>
+<a id="orgb75ba4d"></a>
 
 ## hyper-git
 
@@ -34,19 +33,9 @@ Executes git commands for all configured repositories. See the
 *examples* folder for a config file to get started.
 
 
-<a id="orga8f6cf8"></a>
+<a id="org9092f7b"></a>
 
 ### sync
 
 Executes git clone, stash, checkout <default branch> & pull.
-
-
-<a id="orgb9864c8"></a>
-
-### Update
-
--   if project does not exist `git clone`
--   `git stash`
--   `git checkout <default-branch>`
--   `git pull`
 
