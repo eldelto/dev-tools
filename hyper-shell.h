@@ -45,7 +45,7 @@ void directories_to_commands(
   const char directories[][PATH_MAX],
   const unsigned int len,
   const struct command commands[],
-  const char* const command
+  const char command[MAX_CMD_LEN]
 ) {
   for (unsigned int i = 0; i < len; ++i) {
     const struct command* cmd = &commands[i];

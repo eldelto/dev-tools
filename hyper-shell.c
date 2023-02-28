@@ -20,7 +20,7 @@ int main(const int argc, const char* const argv[]) {
   parse_directories(directories, argc, argv);
 
   // Main loop
-  char command[MAX_CMD_LEN + 1] = "";
+  char command[MAX_CMD_LEN] = "";
   const struct command commands[dir_count];
   while (true) {
     printf("\n> ");

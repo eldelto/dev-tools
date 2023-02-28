@@ -9,6 +9,7 @@
 
 #define MAX_REMOTE_LEN 100
 #define MAX_BRANCH_LEN 50
+
 struct repository {
   const char remote[MAX_REMOTE_LEN];
   const char default_branch[MAX_BRANCH_LEN];
@@ -49,32 +50,16 @@ static int callback(
   return 1;
 }
 
-typedef int(*repo_callback)(const struct repository* const);
-
-static int for_each_repo(
-  const struct repository repos[],
-  const unsigned int repos_len,
-  repo_callback callback
-) {
-  int err = 0;
-  for (unsigned int i = 0; i < repos_len; ++i) {
-    const struct repository repo = repos[i];
-    if (!repo.path[0] || !repo.default_branch[0] || !repo.remote[0])
-      return 1; // TODO: Abort
-
-    err = callback(&repo);
-    if (err) return err;
-  }
-
-  return 0;
-}
-
-static int repo_create_dir(const struct repository* const repo) {
-  printf("Creating directory '%s'\n", repo->path);
-
-  char command[200];
+static void repo_create_dir(const struct repository* const repo) {
+  char command[PATH_MAX];
   snprintf(command, sizeof(command), "mkdir -p %s", repo->path);
-  return system(command);
+
+  int err = system(command);
+  if (err) {
+    char error_msg[ERROR_MSG_LEN] = "";
+    snprintf(error_msg, ERROR_MSG_LEN, "Failed to create directory '%s' - exiting.", repo->path);
+    panic(error_msg);
+  }
 }
 
 static bool is_git_project(const char path[]) {
@@ -83,16 +68,16 @@ static bool is_git_project(const char path[]) {
   return !access(git_path, F_OK);
 }
 
-static int hg_sync(const struct repository repos[], const unsigned int repos_len) {
-  int err = for_each_repo(repos, repos_len, repo_create_dir);
-  if (err) return err;
-
+static void hg_sync(const struct repository repos[], const unsigned int repos_len) {
   // Checkout default branch and pull changes.
   const struct command commands[repos_len];
+
   for (unsigned int i = 0; i < repos_len; ++i) {
-    const struct command* cmd = &commands[i];
     const struct repository repo = repos[i];
 
+    repo_create_dir(&repo);
+
+    const struct command* cmd = &commands[i];
     strlcpy((char*)cmd->directory, repo.path, PATH_MAX);
 
     // Clone the repository if the .git folder does not exist.
@@ -108,7 +93,6 @@ static int hg_sync(const struct repository repos[], const unsigned int repos_len
   }
 
   execute_command(commands, repos_len, true);
-  return 0;
 }
 
 static void usage() {
@@ -171,8 +155,6 @@ int main(int argc, char* argv[]) {
     return 3;
   }
 
-  err = hg_sync(repos, repo_offset + 1);
-  if (err) return err;
-
+  hg_sync(repos, repo_offset + 1);
   return 0;
 }
