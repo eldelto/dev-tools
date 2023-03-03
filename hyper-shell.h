@@ -15,7 +15,7 @@
 #define MAX_FULL_CMD_LEN    400
 #define MAX_CMD_OUTPUT_LEN  512
 
-void parse_directories(char directories[][PATH_MAX], const int argc, const char* const argv[]) {
+void hs_parse_directories(char directories[][PATH_MAX], const int argc, const char* const argv[]) {
   char error_msg[ERROR_MSG_LEN] = "";
   const unsigned int path_count = argc - 1;
 
@@ -36,26 +36,26 @@ void parse_directories(char directories[][PATH_MAX], const int argc, const char*
   }
 }
 
-struct command {
+struct hs_command {
   char directory[PATH_MAX];
   char command[MAX_CMD_LEN];
 };
 
-void directories_to_commands(
+void hs_directories_to_commands(
   const char directories[][PATH_MAX],
   const unsigned int len,
-  const struct command commands[],
+  const struct hs_command commands[],
   const char command[MAX_CMD_LEN]
 ) {
   for (unsigned int i = 0; i < len; ++i) {
-    const struct command* cmd = &commands[i];
+    const struct hs_command* cmd = &commands[i];
     strlcpy((char*)cmd->directory, directories[i], PATH_MAX);
     strlcpy((char*)cmd->command, command, MAX_CMD_LEN);
   }
 }
 
-void execute_command(
-  const struct command commands[],
+void hs_execute_command(
+  const struct hs_command commands[],
   const unsigned int commands_len,
   const bool fail_fast
 ) {
@@ -69,7 +69,7 @@ void execute_command(
   // Launch processes
   FILE* pipes[commands_len];
   for (unsigned int i = 0; i < commands_len; ++i) {
-    const struct command cmd = commands[i];
+    const struct hs_command cmd = commands[i];
     snprintf(full_command, MAX_FULL_CMD_LEN, "cd %s && %s -c \"%s\" 2>&1",
       cmd.directory, shell, cmd.command);
 
@@ -82,7 +82,7 @@ void execute_command(
 
   // Serialize process output
   for (unsigned int i = 0; i < commands_len; ++i) {
-    const struct command cmd = commands[i];
+    const struct hs_command cmd = commands[i];
     printf("\n\033[32m%s\033[0m\n", cmd.directory);
 
     FILE* fd = pipes[i];

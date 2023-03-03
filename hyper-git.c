@@ -95,14 +95,14 @@ static bool is_git_project(const char path[]) {
 
 static void hg_sync(const struct repository repos[], const unsigned int repos_len) {
   // Checkout default branch and pull changes.
-  const struct command commands[repos_len];
+  const struct hs_command commands[repos_len];
 
   for (unsigned int i = 0; i < repos_len; ++i) {
     const struct repository repo = repos[i];
 
     repo_create_dir(&repo);
 
-    const struct command* cmd = &commands[i];
+    const struct hs_command* cmd = &commands[i];
     strlcpy((char*)cmd->directory, repo.path, PATH_MAX);
 
     // Clone the repository if the .git folder does not exist.
@@ -117,7 +117,7 @@ static void hg_sync(const struct repository repos[], const unsigned int repos_le
     }
   }
 
-  execute_command(commands, repos_len, true);
+  hs_execute_command(commands, repos_len, true);
 }
 
 static void usage() {

@@ -17,16 +17,16 @@ int main(const int argc, const char* const argv[]) {
 
   const unsigned int dir_count = argc - 1;
   char directories[dir_count][PATH_MAX];
-  parse_directories(directories, argc, argv);
+  hs_parse_directories(directories, argc, argv);
 
   // Main loop
   char command[MAX_CMD_LEN] = "";
-  const struct command commands[dir_count];
+  const struct hs_command commands[dir_count];
   while (true) {
     printf("\n> ");
     fgets(command, MAX_CMD_LEN, stdin);
-    directories_to_commands(directories, dir_count, commands, command);
-    execute_command(commands, dir_count, false);
+    hs_directories_to_commands(directories, dir_count, commands, command);
+    hs_execute_command(commands, dir_count, false);
   }
 
   return 0;
