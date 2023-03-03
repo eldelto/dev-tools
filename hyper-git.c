@@ -29,14 +29,15 @@ static void strip_filename(const char path[PATH_MAX], char buffer[PATH_MAX]) {
 }
 
 static void resolve_relative_path(char relative_path[PATH_MAX], const char base_path[PATH_MAX]) {
-  if (strncmp(relative_path, "./", 2)) return;
+  if (!strncmp(relative_path, "/", 1)) return;
+
+  char resolved_base_path[PATH_MAX];
+  if (realpath(base_path, resolved_base_path) == NULL) {
+      panic("Could not resolve realpath of base_path - exiting.");
+  }
 
   char buffer[PATH_MAX];
-  if (realpath(base_path, buffer) == NULL) {
-      panic("asdfsd");
-  }
-  strncat(buffer, relative_path + 1, PATH_MAX);
-
+  snprintf(buffer, PATH_MAX, "%s/%s", resolved_base_path, relative_path);
   strlcpy(relative_path, buffer, PATH_MAX);
 }
 
