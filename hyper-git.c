@@ -11,14 +11,34 @@
 #define MAX_BRANCH_LEN 50
 
 struct repository {
-  const char remote[MAX_REMOTE_LEN];
-  const char default_branch[MAX_BRANCH_LEN];
-  const char path[PATH_MAX];
+  char remote[MAX_REMOTE_LEN];
+  char default_branch[MAX_BRANCH_LEN];
+  char path[PATH_MAX];
 };
 
 #define MAX_REPO_COUNT 100
 struct repository* repos;
 unsigned int repo_offset = 0;
+
+char config_path[PATH_MAX] = "";
+
+static void strip_filename(const char path[PATH_MAX], char buffer[PATH_MAX]) {
+  size_t len = (strrchr(path, '/') - path) + 1;
+  if (len > PATH_MAX) len = PATH_MAX;
+  strlcpy(buffer, path, len);
+}
+
+static void resolve_relative_path(char relative_path[PATH_MAX], const char base_path[PATH_MAX]) {
+  if (strncmp(relative_path, "./", 2)) return;
+
+  char buffer[PATH_MAX];
+  if (realpath(base_path, buffer) == NULL) {
+      panic("asdfsd");
+  }
+  strncat(buffer, relative_path + 1, PATH_MAX);
+
+  strlcpy(relative_path, buffer, PATH_MAX);
+}
 
 static int callback(
   __attribute__((__unused__)) void* user,
@@ -39,13 +59,17 @@ static int callback(
   }
 
   // Populate the repository struct.
-  const struct repository* repo = &repos[repo_offset];
+  struct repository* repo = &repos[repo_offset];
   if (strcmp("remote", name) == 0)
     strlcpy((char*)repo->remote, value, MAX_REMOTE_LEN);
   else if (strcmp("default_branch", name) == 0)
     strlcpy((char*)repo->default_branch, value, MAX_BRANCH_LEN);
-  else if (strcmp("path", name) == 0)
+  else if (strcmp("path", name) == 0) {
+    char config_directory[PATH_MAX] = "";
+    strip_filename(config_path, config_directory);
     strlcpy((char*)repo->path, value, PATH_MAX);
+    resolve_relative_path(repo->path, config_directory);
+  }
 
   return 1;
 }
@@ -115,7 +139,6 @@ static void default_config_path(char buffer[PATH_MAX]) {
 }
 
 int main(int argc, char* argv[]) {
-  char config_path[PATH_MAX];
   default_config_path(config_path);
 
   int ch = 0;
